@@ -1,0 +1,94 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mobile Towers Map</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+
+    <style>
+        #map { height: 600px; }
+        #filter {
+            margin: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Mobile Towers</h2>
+
+    <!-- Dropdown to filter towers by MNO -->
+    <div id="filter">
+        <label for="mno-select">Filter by MNO:</label>
+        <select id="mno-select">
+            <option value="all">All</option>
+            {% for mno in mno_list %}
+            <option value="{{ mno }}">{{ mno }}</option>
+        {% endfor %}        
+        </select>
+    </div>
+
+    <!-- Map container -->
+    <div id="map"></div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+    <script>
+        // Initialize the Leaflet map centered at a default location
+        var map = L.map('map').setView([40.4637, -3.7492], 6);
+
+
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        // Create a MarkerClusterGroup to handle clustering
+        var markerCluster = L.markerClusterGroup();
+
+        // Store all marker references so we can filter them later
+        var allMarkers = [];
+
+        // Loop through the tower data from Django and create markers
+        {% for tower in towers %}
+            var marker = L.marker([{{ tower.location.y }}, {{ tower.location.x }}]);
+            
+            // Add popup to each marker
+            marker.bindPopup("<b>{{ tower.mno }}</b><br>{{ tower.code }}");
+            
+            // Custom property to help with filtering
+            marker.mno = "{{ tower.mno }}";
+
+            // Add marker to both the cluster group and tracking array
+            markerCluster.addLayer(marker);
+            allMarkers.push(marker);
+        {% endfor %}
+
+        // Add all markers to the map
+        map.addLayer(markerCluster);
+
+        // Filter function
+        document.getElementById('mno-select').addEventListener('change', function() {
+            var selected = this.value;
+
+            // Clear existing clusters
+            markerCluster.clearLayers();
+
+            // Filter and re-add markers based on selected MNO
+            if (selected === "all") {
+                markerCluster.addLayers(allMarkers); // Show all
+            } else {
+                var filtered = allMarkers.filter(function(marker) {
+                    return marker.mno === selected;
+                });
+                markerCluster.addLayers(filtered); // Show only filtered
+            }
+        });
+    </script>
+</body>
+</html>
